@@ -2,8 +2,11 @@
 
 namespace App\Repository;
 
+use App\Entity\Flight;
 use App\Entity\Transaction;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -14,37 +17,50 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class TransactionRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
+    private $manager;
+
+    public function __construct(ManagerRegistry $registry, EntityManagerInterface $manager)
     {
         parent::__construct($registry, Transaction::class);
+        $this->manager = $manager;
     }
 
-    // /**
-    //  * @return Transaction[] Returns an array of Transaction objects
-    //  */
-    /*
-    public function findByExampleField($value)
+    public function saveFlightTransaction(Flight $flight, User $user, $position, $payment_type)
     {
-        return $this->createQueryBuilder('t')
-            ->andWhere('t.exampleField = :val')
-            ->setParameter('val', $value)
-            ->orderBy('t.id', 'ASC')
-            ->setMaxResults(10)
-            ->getQuery()
-            ->getResult()
-        ;
-    }
-    */
+        $transaction = $this->findOneBy(['flight' => $flight->getId(), 'position' => $position]);
 
-    /*
-    public function findOneBySomeField($value): ?Transaction
-    {
-        return $this->createQueryBuilder('t')
-            ->andWhere('t.exampleField = :val')
-            ->setParameter('val', $value)
-            ->getQuery()
-            ->getOneOrNullResult()
-        ;
+        if($transaction) {
+            // Только владелец брони может её купить или вернуть билет
+            if($transaction->getUser()->getId() == $user->getId()) {
+                if ($transaction->getStatus() == 'reservation' && $payment_type == 'buy') {
+                    $transaction->setStatus('buy');
+                } elseif ($payment_type == 'ban') {
+                    $transaction->setStatus($payment_type);
+                } else {
+                    throw new \Exception('User cant '.$payment_type.' this position');
+                }
+            } elseif($transaction->getStatus() == 'ban') {
+                // Предыдущий покупатель вернул билет
+                $transaction->setStatus($payment_type);
+            }
+
+        } else {
+            $transaction = new Transaction();
+            $transaction->setFlight($flight);
+            $transaction->setPosition($position);
+        }
+
+        $transaction->setStatus($payment_type);
+        $transaction->setUser($user);
+
+        $total = 10000;
+        if($payment_type == 'reservation') {
+            $total = 1000;
+        }
+
+        $transaction->setTotalMoney($total);
+
+        $this->manager->persist($transaction);
+        $this->manager->flush();
     }
-    */
 }

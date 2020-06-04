@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Flight;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @method Flight|null find($id, $lockMode = null, $lockVersion = null)
@@ -19,32 +20,14 @@ class FlightRepository extends ServiceEntityRepository
         parent::__construct($registry, Flight::class);
     }
 
-    // /**
-    //  * @return Flight[] Returns an array of Flight objects
-    //  */
-    /*
-    public function findByExampleField($value)
+    public function findOrFail($id): Flight
     {
-        return $this->createQueryBuilder('f')
-            ->andWhere('f.exampleField = :val')
-            ->setParameter('val', $value)
-            ->orderBy('f.id', 'ASC')
-            ->setMaxResults(10)
-            ->getQuery()
-            ->getResult()
-        ;
-    }
-    */
+        $flight = $this->findOneBy(['id' => $id]);
 
-    /*
-    public function findOneBySomeField($value): ?Flight
-    {
-        return $this->createQueryBuilder('f')
-            ->andWhere('f.exampleField = :val')
-            ->setParameter('val', $value)
-            ->getQuery()
-            ->getOneOrNullResult()
-        ;
+        if (!$flight) {
+            throw new NotFoundHttpException('Flight not found. ID: '.$id);
+        }
+
+        return $flight;
     }
-    */
 }
